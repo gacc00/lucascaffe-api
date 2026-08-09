@@ -25,32 +25,34 @@ public class JwtFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain)
-        throws ServletException, IOException{
+            throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")){
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String token = authHeader.substring(7);
-        String email = jwtService.extractEmail(token);
+        try {
+            String token = authHeader.substring(7);
+            String email = jwtService.extractEmail(token);
 
-        if(email != null && SecurityContextHolder.getContext().getAuthentication() == null){
-            var user = userRepository.findByEmail(email).orElseThrow();
+            if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                var user = userRepository.findByEmail(email).orElseThrow();
 
-            if (jwtService.isTokenValid(token, user)){
-                var authToken = new UsernamePasswordAuthenticationToken(
-                        user, null, user.getAuthorities()
-                );
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                if (jwtService.isTokenValid(token, user)) {
+                    var authToken = new UsernamePasswordAuthenticationToken(
+                            user, null, user.getAuthorities()
+                    );
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
             }
-
+        } catch (Exception e) {
+            // Token inválido o expirado — ignoramos y dejamos pasar
         }
+
         filterChain.doFilter(request, response);
     }
-
-
 }
